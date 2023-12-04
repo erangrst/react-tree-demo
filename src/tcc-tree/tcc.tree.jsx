@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from "react";
 import useFetch from "../hooks/useFetch";
 import Spinner from "../infra/spinner";
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import { TreeView } from '@mui/x-tree-view/TreeView';
-import { TreeItem } from '@mui/x-tree-view/TreeItem';
+// import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+// import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+// import { TreeView } from "@mui/x-tree-view/TreeView";
+// import { TreeItem } from "@mui/x-tree-view/TreeItem";
+import { TreeTable } from "primereact/treetable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import 'primeicons/primeicons.css';
 
 export default function TccTreeComponent() {
   const { data, loading, error } = useFetch("hw");
@@ -20,9 +24,59 @@ export default function TccTreeComponent() {
     );
   }
 
+  function createTree(hws) {
+    console.log("createTree 1", { hws });
+
+    const tmpNodes = hws.map((hwItem) => {
+      const node = {
+        id: hwItem.id,
+        key: hwItem.id,
+        label: hwItem.name,
+        data: {
+          obj: hwItem,
+        },
+      };
+
+      return node;
+    });
+
+    tmpNodes.forEach((nodeItem) => {
+      if (nodeItem.data.obj.parentId !== 0) {
+        const tmpNode = tmpNodes.find((tmpNodeItem) => tmpNodeItem.data.obj.id == nodeItem.data.obj.parentId);
+
+        if (tmpNode) {
+          console.log("createTree 2 -a ", { tmpNode, children: tmpNode.children });
+
+          tmpNode.children = [...(tmpNode.children || []), nodeItem];
+          console.log("createTree 2 -b ", { tmpNode });
+        }
+      }
+    });
+
+    const rootNodes = tmpNodes.filter((node) => node.data.obj.parentId === "0");
+    console.log("createTree 3", { rootNodes });
+
+    return rootNodes;
+  }
+
+  const actionTemplate = () => {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" icon="pi pi-search" rounded></Button>
+        <Button type="button" icon="pi pi-pencil" severity="success" rounded></Button>
+      </div>
+    );
+  };
+
   if (error) throw error;
   if (loading) return <Spinner />;
   // if (data.length === 0) return <PageNotFound />;
+
+  console.log("TccTreeComponent 1", { data, loading, error });
+
+  const nodes = createTree(data);
+
+  console.log("after createTree", { nodes });
 
   return (
     <>
@@ -30,22 +84,11 @@ export default function TccTreeComponent() {
 
       <section id="hws">{data.map(renderHw)}</section>
 
-      <TreeView
-        aria-label="file system navigator"
-        defaultCollapseIcon={<ExpandMoreIcon />}
-        defaultExpandIcon={<ChevronRightIcon />}
-        sx={{ height: 240, flexGrow: 1, maxWidth: 400, overflowY: "auto" }}
-      >
-        <TreeItem nodeId="1" label="Applications">
-          <TreeItem nodeId="2" label="Calendar" />
-        </TreeItem>
-        <TreeItem nodeId="5" label="Documents">
-          <TreeItem nodeId="10" label="OSS" />
-          <TreeItem nodeId="6" label="MUI">
-            <TreeItem nodeId="8" label="index.js" />
-          </TreeItem>
-        </TreeItem>
-      </TreeView>
+      <TreeTable value={nodes} tableStyle={{ minWidth: "50rem" }}>
+        <Column field="obj.name" header="Name" expander></Column>
+        <Column field="obj.status" header="Status"></Column>
+        <Column body={actionTemplate} headerClassName="w-10rem" />
+      </TreeTable>
     </>
   );
 }
